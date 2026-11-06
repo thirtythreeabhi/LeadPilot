@@ -25,7 +25,7 @@ function App() {
   const [search, setSearch] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [analysisBusy, setAnalysisBusy] = useState(false);
-  const [mode, setMode] = useState('template');
+  const [mode, setMode] = useState('ai');
   const [tone, setTone] = useState('Professional');
   const [customInstructions, setCustomInstructions] = useState('');
   const [channel, setChannel] = useState('auto');
@@ -283,6 +283,27 @@ function App() {
               </div>
               <div className="assistant-scroll" id="assistant-tab-content" role="tabpanel" aria-labelledby={assistantTab==='overview'?'assistant-tab-overview':'assistant-tab-draft'}>
               {assistantTab==='overview' ? <>
+              <section className="insight-card">
+                <div className="card-label">RESPONSE SETTINGS</div>
+                <label className="control-label">Draft mode</label>
+                <div className="mode-options">{MODES.map(m=><button type="button" className={cls('mode-option',mode===m.id&&'chosen')} key={m.id} onClick={()=>{setMode(m.id);setDraft(null);}}>
+                  <span className={cls('radio-indicator',mode===m.id && 'active')}></span><span><b>{m.title}</b><small>{m.hint}</small></span>
+                </button>)}</div>
+                <div className="double-field">
+                  <label className="control-label">Channel<CustomSelect ariaLabel="Channel" value={channel} options={CHANNELS.map(c=>({value:c,label:c==='auto'?'Auto ('+selected.channel+')':c}))} onChange={value=>{setChannel(value);setDraft(null);}} /></label>
+                  <label className="control-label">Tone<CustomSelect ariaLabel="Tone" value={tone} options={['Professional','Friendly','Concise'].map(t=>({value:t,label:t}))} onChange={value=>{setTone(value);setDraft(null);}} /></label>
+                </div>
+                <label className="control-label">Custom response instructions <small>Optional · up to 1,200 characters</small><textarea rows="3" maxLength={1200} value={customInstructions} onChange={e=>setCustomInstructions(e.target.value)} placeholder="For example: acknowledge each request, avoid listing documents, and ask only for a suitable callback time."/><small>Used in AI modes. Template only uses approved wording.</small></label>
+                <label className="switch-label ai-matching"><input type="checkbox" checked={aiMatching} onChange={e=>setAiMatching(e.target.checked)} />Use AI to choose templates (may take longer)</label>
+                <button className="button primary generate-button" disabled={generating||analysisBusy||!analysis||!selected.messages.length} onClick={generate}>{generating?'Generating draft…':'✧ Generate response'} <span>→</span></button>
+                <div className="matching-header"><label className="control-label">Matched templates</label><button className="text-button" onClick={()=>setManualIds(null)} disabled={manualIds===null}>Use automatic</button></div>
+                <div className="matching-list">
+                  {activeTemplates.map(t=><label className="template-choice" key={t.id}>
+                    <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={()=>changeTemplateSelection(t.id)} disabled={!selectedIds.includes(t.id)&&selectedIds.length>=6}/>
+                    <span className="template-choice-label"><span className="template-choice-icon" aria-hidden="true">{templateIcon(t.id)}</span><span>{t.name}</span></span></label>)}
+                </div>
+                <p className="method-note">{manualIds===null?(aiMatching?'AI matching requested, with rules fallback.':'Fast keyword matching; turn on AI matching when needed.'):'Manual override: selected templates will be used.'}</p>
+              </section>
               <section className="insight-card warmth-card">
                 <div className="card-label"><span>LEAD INTELLIGENCE</span><span className="subtle-chip">Internal only</span></div>
                 {analysisBusy && !analysis ? <div className="inline-loading">Analysing conversation…</div> : analysis ? <>
@@ -304,27 +325,6 @@ function App() {
                   <button className="inline-link" disabled={analysisBusy} onClick={analyzeWithAi}>✧ {analysisBusy?'Analysing…':'Analyse with AI if available'} <span>→</span></button>
                   <div className="method-note">{analysis?.selection_method || 'Pending'}{analysis?.selection_note ? ' · '+analysis.selection_note : ''}</div>
                 </div>
-              </section>
-              <section className="insight-card">
-                <div className="card-label">RESPONSE SETTINGS</div>
-                <label className="control-label">Draft mode</label>
-                <div className="mode-options">{MODES.map(m=><button type="button" className={cls('mode-option',mode===m.id&&'chosen')} key={m.id} onClick={()=>{setMode(m.id);setDraft(null);}}>
-                  <span className={cls('radio-indicator',mode===m.id && 'active')}></span><span><b>{m.title}</b><small>{m.hint}</small></span>
-                </button>)}</div>
-                <div className="double-field">
-                  <label className="control-label">Channel<CustomSelect ariaLabel="Channel" value={channel} options={CHANNELS.map(c=>({value:c,label:c==='auto'?'Auto ('+selected.channel+')':c}))} onChange={value=>{setChannel(value);setDraft(null);}} /></label>
-                  <label className="control-label">Tone<CustomSelect ariaLabel="Tone" value={tone} options={['Professional','Friendly','Concise'].map(t=>({value:t,label:t}))} onChange={value=>{setTone(value);setDraft(null);}} /></label>
-                </div>
-                <label className="control-label">Custom response instructions <small>Optional · up to 1,200 characters</small><textarea rows="3" maxLength={1200} value={customInstructions} onChange={e=>setCustomInstructions(e.target.value)} placeholder="For example: acknowledge each request, avoid listing documents, and ask only for a suitable callback time."/><small>Used in AI modes. Template only uses approved wording.</small></label>
-                <label className="switch-label ai-matching"><input type="checkbox" checked={aiMatching} onChange={e=>setAiMatching(e.target.checked)} />Use AI to choose templates (may take longer)</label>
-                <div className="matching-header"><label className="control-label">Matched templates</label><button className="text-button" onClick={()=>setManualIds(null)} disabled={manualIds===null}>Use automatic</button></div>
-                <div className="matching-list">
-                  {activeTemplates.map(t=><label className="template-choice" key={t.id}>
-                    <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={()=>changeTemplateSelection(t.id)} disabled={!selectedIds.includes(t.id)&&selectedIds.length>=6}/>
-                    <span className="template-choice-label"><span className="template-choice-icon" aria-hidden="true">{templateIcon(t.id)}</span><span>{t.name}</span></span></label>)}
-                </div>
-                <p className="method-note">{manualIds===null?(aiMatching?'AI matching requested, with rules fallback.':'Fast keyword matching; turn on AI matching when needed.'):'Manual override: selected templates will be used.'}</p>
-                <button className="button primary generate-button" disabled={generating||analysisBusy||!analysis||!selected.messages.length} onClick={generate}>{generating?'Generating draft…':'✧ Generate response'} <span>→</span></button>
               </section>
               </> : <div className="draft-section">
             <div className="draft-title"><div><p className="eyebrow">RESPONSE COMPOSER</p><h2>Suggested response</h2><p>Review and edit. Nothing is sent automatically.</p></div><div className="draft-controls">{draft&&<span className={cls('draft-state',draft.status==='approved'?'approved':'')}>{draft.status==='approved'?'✓ Approved':draft.status==='unsaved'?'Unsaved edits':draft.status==='edited'?'Revision saved':'Saved draft'}</span>}</div></div>
