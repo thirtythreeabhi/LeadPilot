@@ -237,7 +237,7 @@ function lp_generate_reply(array $conversation, array $analysis, array $template
         . 'Avoid repeating questions already answered or commitments already made. '
         . 'Use the customer language when obvious. Do NOT include internal lead scoring, sentiment or private notes. '
         . 'Be concise: aim for 80 words or fewer, and never exceed 120 words unless a mandatory clause requires it. '
-        . ($email ? 'Write only the email body (greeting through sign-off), without a subject line. ' :
+        . ($email ? 'Write only the email body from greeting through the final message paragraph, without a subject line or sign-off. The application adds the sender signature. ' :
             'Write a natural concise chat-style reply, without subject or email signature. ')
         . 'Output ONLY the final response as plain text: no markdown, markdown markers, headings, bullets, or metadata.';
     if ($mode === 'hybrid') {
@@ -256,11 +256,25 @@ function lp_generate_reply(array $conversation, array $analysis, array $template
         . ($revisionSuggestions !== '' ? 'Revise the previous draft according to the employee requested edits. Preserve accurate useful details, address all unresolved customer intents, and do not invent facts.' : 'Write one customer-facing reply.');
     $result = lp_ai_complete($system, $prompt, 800);
     $reply = lp_plain_text_reply($result['text']);
+    if ($email) {
+        // The recipient company is context about the customer, never the sender identity.
+        // Replace any model-generated closing/signature with the canonical company sign-off.
+        $reply = lp_remove_email_signoff($reply);
+        $reply = rtrim($reply) . "\n\nKind regards,\nOnDemand International";
+    }
     if ($mode === 'hybrid' && $mandatory) {
         $reply .= "\n\n" . implode("\n", $mandatory);
     }
     $subject = $email ? lp_email_subject($conversation, $analysis) : null;
     return ['subject'=>$subject, 'reply'=>$reply, 'model'=>$result['model'], 'tokens'=>$result['tokens']];
+}
+
+/** Remove a model's trailing valediction and signature before adding our fixed sender identity. */
+function lp_remove_email_signoff(string $reply): string
+{
+    $reply = rtrim($reply);
+    $reply = preg_replace('/(?:\R\s*)+(?:(?:best|kind|warm|regards|sincerely|thank you|thanks|yours(?: sincerely| faithfully)?)[,!\s]*(?:\R[\p{L}\p{N} .,&()\'-]{1,100}){0,3})\s*$/iu', '', $reply) ?? $reply;
+    return rtrim($reply);
 }
 
 /** Remove common Markdown artifacts if a model ignores the plain-text instruction. */
