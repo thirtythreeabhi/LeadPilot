@@ -1,0 +1,11 @@
+# Credentials (never commit)
+.env
+.env.*
+!.env.example
+
+# Local customer/demo output and editable template state
+/data/*.jsonl
+/data/*.json
+/node_modules/
+/npm-debug.log*
+# Generated JS bundle intentionally committed for PHP-only startup
