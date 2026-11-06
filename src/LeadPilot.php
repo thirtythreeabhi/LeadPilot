@@ -66,13 +66,18 @@ function leadpilot_extract_reply(array $response): string
     return trim($reply);
 }
 
+function leadpilot_data_directory(): string
+{
+    return getenv('VERCEL') === '1' ? '/tmp/leadpilot-data' : dirname(__DIR__) . '/data';
+}
+
 /** @param array<string,mixed> $record */
 function leadpilot_append_jsonl(string $filename, array $record): void
 {
     if (!preg_match('/^[a-z0-9_-]+\.jsonl$/', $filename)) {
         throw new LeadPilotError('Unsupported storage filename.', 500, 'storage_error');
     }
-    $directory = dirname(__DIR__) . '/data';
+    $directory = leadpilot_data_directory();
     if (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory)) {
         throw new LeadPilotError('Could not create data directory.', 500, 'storage_error');
     }

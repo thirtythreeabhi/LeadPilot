@@ -133,7 +133,7 @@ function lp_default_templates(): array
 
 function lp_data_path(string $filename): string
 {
-    return dirname(__DIR__) . '/data/' . $filename;
+    return leadpilot_data_directory() . '/' . $filename;
 }
 
 /** @return list<array<string,mixed>> */
